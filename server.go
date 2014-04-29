@@ -7,5 +7,9 @@ func main() {
 	m.Get("/", func() (int, string) {
 		return 418, "i'm a teapot"
 	})
+
+	m.Get("/hello/:name", func(params martini.Params) string {
+		return "Hello " + params["name"]
+	})
 	m.Run()
 }
