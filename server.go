@@ -34,7 +34,31 @@ func main() {
 		Layout: "layout",
 	}))
 
-	m.Get("/", func(db *sql.DB, r *http.Request, ren render.Render) {
+	m.Get("/", ShowBooks)
+	m.Post("/books", CreateBook)
+	m.Get("/create", NewBooks)
+
+	m.Get("/hello/:name", func(params martini.Params) string {
+		return "Hello " + params["name"]
+	})
+	m.Run()
+}
+
+func NewBooks(r render.Render) {
+	r.HTML(200, "create", nil)
+}
+
+func CreateBook(ren render.Render, r *http.Request, db *sql.DB) {
+	_, err := db.Query("INSERT INTO books (title, author, description) values ($1, $2, $3)",
+			r.FormValue("title"),
+			r.FormValue("author"),
+			r.FormValue("description"))
+
+	PanicIf(err)
+	ren.Redirect("/")
+}
+
+func ShowBooks(db *sql.DB, r *http.Request, ren render.Render) {
 		search := "%" + r.URL.Query().Get("search") + "%"
 		rows, err := db.Query(`SELECT title, author, description FROM books
 					WHERE title ILIKE $1
@@ -52,10 +76,4 @@ func main() {
 		}
 
 		ren.HTML(200, "books", books)
-	})
-
-	m.Get("/hello/:name", func(params martini.Params) string {
-		return "Hello " + params["name"]
-	})
-	m.Run()
-}
+	}
