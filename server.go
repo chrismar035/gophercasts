@@ -26,7 +26,11 @@ func main() {
 	m.Map(SetupDB())
 
 	m.Get("/", func(db *sql.DB, r *http.Request, rw http.ResponseWriter) {
-		rows, err := db.Query("SELECT title, author, description FROM books")
+		search := "%" + r.URL.Query().Get("search") + "%"
+		rows, err := db.Query(`SELECT title, author, description FROM books
+					WHERE title ILIKE $1
+					OR author ILIKE $1
+					OR description ILIKE $1`, search)
 		PanicIf(err)
 		defer rows.Close()
 
