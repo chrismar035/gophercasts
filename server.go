@@ -41,6 +41,8 @@ func main() {
 	m.Get("/hello/:name", func(params martini.Params) string {
 		return "Hello " + params["name"]
 	})
+
+	m.Post("/login", PostLogin)
 	m.Run()
 }
 
@@ -59,21 +61,34 @@ func CreateBook(ren render.Render, r *http.Request, db *sql.DB) {
 }
 
 func ShowBooks(db *sql.DB, r *http.Request, ren render.Render) {
-		search := "%" + r.URL.Query().Get("search") + "%"
-		rows, err := db.Query(`SELECT title, author, description FROM books
-					WHERE title ILIKE $1
-					OR author ILIKE $1
-					OR description ILIKE $1`, search)
+	search := "%" + r.URL.Query().Get("search") + "%"
+	rows, err := db.Query(`SELECT title, author, description FROM books
+				WHERE title ILIKE $1
+				OR author ILIKE $1
+				OR description ILIKE $1`, search)
+	PanicIf(err)
+	defer rows.Close()
+
+	books := []Book{}
+	for rows.Next() {
+		book := Book{}
+		err := rows.Scan(&book.Title, &book.Author, &book.Description)
 		PanicIf(err)
-		defer rows.Close()
-
-		books := []Book{}
-		for rows.Next() {
-			book := Book{}
-			err := rows.Scan(&book.Title, &book.Author, &book.Description)
-			PanicIf(err)
-			books = append(books, book)
-		}
-
-		ren.HTML(200, "books", books)
+		books = append(books, book)
 	}
+
+	ren.HTML(200, "books", books)
+}
+
+func PostLogin(req *http.Request, db *sql.DB) (int, string) {
+	var id string
+
+	email, password := req.FormValue("email"), req.FormValue("password")
+	err := db.QueryRow("select id from users where email=$1 and password=$2", email, password).Scan(&id)
+
+	if err != nil {
+		return 401, "Unauthorized"
+	}
+
+	return 200, "User id is " + id
+}
